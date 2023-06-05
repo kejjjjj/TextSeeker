@@ -6,6 +6,7 @@
 #include "pch.hpp"
 
 #define IDM_SEARCHBOX 2001
+#define IDM_FILEEXPLORER 2002
 
 std::wstring UI_GetWindowText(HWND hWnd);
 

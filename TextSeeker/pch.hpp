@@ -11,9 +11,14 @@
 #include "TextSeeker.h"
 #include "commctrl.h"
 #include "uxtheme.h"
+#include "Windowsx.h"
 
 #pragma comment(lib, "UxTheme.lib")
 
 #include "ui_inputfields.hpp"
+#include "ui_fileexplorer.hpp"
 
+
+inline HWND g_hMainWnd;
+inline bool b_LHeld = false;
 #endif

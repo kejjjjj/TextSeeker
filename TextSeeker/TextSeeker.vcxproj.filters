@@ -33,12 +33,18 @@
     <ClInclude Include="pch.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="ui_fileexplorer.hpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="TextSeeker.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="ui_inputfields.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ui_fileexplorer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -54,5 +60,8 @@
     <Image Include="TextSeeker.ico">
       <Filter>Resource Files</Filter>
     </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <Manifest Include="TextSeeker.exe.manifest" />
   </ItemGroup>
 </Project>

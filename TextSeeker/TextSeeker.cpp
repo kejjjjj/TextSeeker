@@ -137,7 +137,8 @@ void DrawTextOnMainWindow(HWND hWnd)
     GetClientRect(hWnd, &rect);
 
     // Set the text color and background color
-    SetTextColor(hdc, RGB(0, 0, 0));  // White color
+    SetTextColor(hdc, RGB(255, 255, 255));  // White color
+    SetBkMode(hdc, TRANSPARENT);
    // SetBkColor(hdc, RGB(0, 0, 0));          // Black background color
 
     // Create and select a font
@@ -163,8 +164,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     switch (message)
     {
     case WM_CREATE:
+        g_hMainWnd = hWnd;
         CreateSearchBox(hWnd);
-
+        UI_CreateFileExplorer(hWnd);
         break;
     case WM_COMMAND:
         {
@@ -178,20 +180,47 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             }
         }
         break;
-    case WM_PAINT:
-        {
-            PAINTSTRUCT ps;
-            
-            HDC hdc = BeginPaint(hWnd, &ps);
-           
-            DrawTextOnMainWindow(hWnd);
-
-
-            EndPaint(hWnd, &ps);
-            
-            
-        }
+    case WM_LBUTTONDOWN:
+    {
+        b_LHeld = true;
         break;
+    }
+    case WM_LBUTTONUP:
+    {
+        b_LHeld = false;
+        break;
+    }
+    case WM_CTLCOLOREDIT:
+    {
+        HDC hdcEdit = (HDC)(wParam);
+        HWND hEdit = (HWND)(lParam);
+
+        SetTextColor(hdcEdit, RGB(255, 255, 255));  // Red color
+
+        // Set the desired background color for the input text
+        SetBkColor(hdcEdit, RGB(25, 25, 25));
+
+        // Return the handle to the desired brush for background color
+        return (LRESULT)(CreateSolidBrush(RGB(25, 25, 25)));
+    }
+    case WM_ERASEBKGND:
+    {
+        HDC hdc = (HDC)wParam;
+        RECT rect;
+        GetClientRect(hWnd, &rect);
+        HBRUSH hbrBackground = CreateSolidBrush(RGB(35, 35, 35)); // replace RGB values with desired color
+        FillRect(hdc, &rect, hbrBackground);
+        DeleteObject(hbrBackground);
+    }
+    break;
+    case WM_SIZE:
+    {
+        UINT width = LOWORD(lParam);
+        UINT height = HIWORD(lParam);
+        UI_ResizeFileExplorer(width, height);
+        break;
+    }
+    break;
     case WM_DESTROY:
         PostQuitMessage(0);
         break;
