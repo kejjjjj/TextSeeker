@@ -143,6 +143,7 @@
     <ClInclude Include="TextSeeker.hpp" />
     <ClInclude Include="ui_fileexplorer.hpp" />
     <ClInclude Include="ui_inputfields.hpp" />
+    <ClInclude Include="u_filesystem.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="TextSeeker.cpp">
@@ -151,6 +152,7 @@
     </ClCompile>
     <ClCompile Include="ui_fileexplorer.cpp" />
     <ClCompile Include="ui_inputfields.cpp" />
+    <ClCompile Include="u_filesystem.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="TextSeeker.rc" />

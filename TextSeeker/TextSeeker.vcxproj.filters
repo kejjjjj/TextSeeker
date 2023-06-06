@@ -13,6 +13,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Source Files\filesystem">
+      <UniqueIdentifier>{b1955fea-c3af-4694-a890-014c3b190588}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="framework.h">
@@ -36,6 +39,12 @@
     <ClInclude Include="ui_fileexplorer.hpp">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="u_filesystem.hpp">
+      <Filter>Source Files\filesystem</Filter>
+    </ClInclude>
+    <ClInclude Include="TextSeeker.hpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="TextSeeker.cpp">
@@ -46,6 +55,9 @@
     </ClCompile>
     <ClCompile Include="ui_fileexplorer.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="u_filesystem.cpp">
+      <Filter>Source Files\filesystem</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

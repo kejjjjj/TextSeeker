@@ -156,6 +156,32 @@ void DrawTextOnMainWindow(HWND hWnd)
     DeleteObject(segoeUI);
     ReleaseDC(hWnd, hdc);
 }
+void DrawTextOnWindow(HWND hWnd, const std::wstring& text, const RECT& where, UINT col, UINT fontSize, bool vCenter, bool hCenter)
+{
+    HDC hdc = GetDC(hWnd);
+    RECT rect;
+    GetClientRect(hWnd, &rect);
+
+    SetTextColor(hdc, col);  // White color
+    SetBkMode(hdc, TRANSPARENT);
+
+    HFONT segoeUI = CreateFont(fontSize, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+        DEFAULT_CHARSET, OUT_DEFAULT_PRECIS,
+        CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY,
+        DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
+
+    SelectObject(hdc, segoeUI);
+
+    UINT flags = DT_SINGLELINE;
+    flags |= vCenter ? DT_VCENTER : 0;
+    flags |= hCenter ? DT_CENTER : 0;
+
+
+    DrawText(hdc, text.c_str(), -1, &const_cast<RECT&>(where), flags);
+
+    DeleteObject(segoeUI);
+    ReleaseDC(hWnd, hdc);
+}
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {

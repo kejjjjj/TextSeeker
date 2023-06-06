@@ -6,6 +6,7 @@
 #include <string>
 #include <Windows.h>
 #include <iostream>
+#include <string_view>
 
 #include "framework.h"
 #include "TextSeeker.h"
@@ -13,13 +14,16 @@
 #include "uxtheme.h"
 #include "Windowsx.h"
 #include <memory>
+#include <filesystem>
+
+namespace _fs = std::filesystem;
 
 #pragma comment(lib, "UxTheme.lib")
 
 #include "TextSeeker.hpp"
 #include "ui_inputfields.hpp"
 #include "ui_fileexplorer.hpp"
-
+#include "u_filesystem.hpp"
 
 inline HWND g_hMainWnd;
 inline bool b_LHeld = false;
