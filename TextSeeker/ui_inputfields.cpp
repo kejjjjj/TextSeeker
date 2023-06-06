@@ -24,7 +24,7 @@ void CreateSearchBox(HWND parent)
 
     auto width = r.right - r.left;
 
-    g_hSearchBox = CreateWindowExA(0, "EDIT", "aaa", WS_CHILD | WS_VISIBLE | WS_BORDER,
+    g_hSearchBox = CreateWindowExW(0, L"EDIT", L"aaa", WS_CHILD | WS_VISIBLE | WS_BORDER,
         23, 23, width * 0.6666f, 30, parent, (HMENU)IDM_SEARCHBOX, GetModuleHandle(NULL), NULL);
 
     SegoeUI = CreateFont(19, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,

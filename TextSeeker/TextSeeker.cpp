@@ -217,7 +217,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     {
         UINT width = LOWORD(lParam);
         UINT height = HIWORD(lParam);
-        UI_ResizeFileExplorer(width, height);
+        fileExplorer->OnResize(width, height);
         break;
     }
     break;

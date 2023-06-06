@@ -1,6 +1,5 @@
 #include "pch.hpp"
-
-LRESULT CALLBACK FileExplorerProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK cFileExplorer::ProcHandler(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	static POINT lastMousePos{};
 	static bool isResizing = false;
@@ -18,8 +17,8 @@ LRESULT CALLBACK FileExplorerProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM
 		RECT rcClient{};
 		GetClientRect(hWnd, &rcClient);
 
-		const int gripSize = 8; 
-		const int leftMargin = 10; 
+		const int gripSize = 8;
+		const int leftMargin = 10;
 
 		RECT rcLeftResize{};
 		rcLeftResize.left = rcClient.left + leftMargin;
@@ -36,7 +35,7 @@ LRESULT CALLBACK FileExplorerProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM
 		if (PtInRect(&rcLeftResize, pt))
 			return HTLEFT;
 		else if (PtInRect(&rcRightResize, pt))
-			return HTRIGHT; 
+			return HTRIGHT;
 
 		return DefWindowProc(hWnd, message, wParam, lParam);
 	}
@@ -47,47 +46,54 @@ LRESULT CALLBACK FileExplorerProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM
 		{
 			isResizing = true;
 
-			lastMousePos.x = GET_X_LPARAM(lParam);
-			lastMousePos.y = GET_Y_LPARAM(lParam);
+			//lastMousePos.x = GET_X_LPARAM(lParam);
+			//lastMousePos.y = GET_Y_LPARAM(lParam);
+
+			GetCursorPos(&lastMousePos);
+
+			ScreenToClient(hWnd, &lastMousePos);
+
 
 			SetCapture(hWnd);
-			
+
 		}
 		else
 			isResizing = false;
 		return DefWindowProc(hWnd, message, wParam, lParam);
-		
+
 	}
 	case WM_MOUSEACTIVATE:
 	case WM_MOUSEMOVE:
 	{
-		std::boolalpha;
-		if (isResizing) {
-			POINT currentMousePos{};
-			currentMousePos.x = GET_X_LPARAM(lParam);
-			currentMousePos.y = GET_Y_LPARAM(lParam);
-
-			ScreenToClient(hWnd, &currentMousePos);
-
-			RECT rcWindow{};
-			GetWindowRect(hWnd, &rcWindow);
-
-			int dx = (currentMousePos.x - lastMousePos.x) * 100;
-			std::cout << "dx:" << dx << "\n";
-
-			int newWidth = rcWindow.right - rcWindow.left;
-			if (wParam == HTLEFT)
-				newWidth -= dx;
-			else if (wParam == HTRIGHT)
-				newWidth += dx;
-
-			SetWindowPos(hWnd, NULL, 0, 0, newWidth, rcWindow.bottom - rcWindow.top, SWP_NOMOVE | SWP_NOZORDER);
-
-			lastMousePos = currentMousePos;
-
-			InvalidateRect(g_hMainWnd, NULL, TRUE);
+		if (!isResizing)
 			break;
-		}
+
+		POINT currentMousePos{};
+		GetCursorPos(&currentMousePos);
+
+		ScreenToClient(hWnd, &currentMousePos);
+
+		RECT rcWindow{}, parentWindow{};
+		GetWindowRect(hWnd, &rcWindow);
+		GetWindowRect(hWnd, &parentWindow);
+
+		int dx = (currentMousePos.x - lastMousePos.x);
+
+
+		int newWidth = rcWindow.right - rcWindow.left;
+		
+		fileExplorer->rect.left = rcWindow.left;
+		fileExplorer->rect.right = newWidth + dx;
+		//fileExplorer->rect.top = 0;
+		//fileExplorer->rect.bottom = parentWindow.bottom - 58;
+		
+		SetWindowPos(hWnd, NULL, 0, 58, fileExplorer->rect.right, fileExplorer->rect.bottom, SWP_NOZORDER);
+
+		lastMousePos = currentMousePos;
+
+		InvalidateRect(hWnd, NULL, TRUE);
+		break;
+
 	}
 	break;
 	case WM_LBUTTONUP:
@@ -95,23 +101,10 @@ LRESULT CALLBACK FileExplorerProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM
 
 		ReleaseCapture();
 		break;
-	break;
+		break;
 	case WM_PAINT:
 	{
-		PAINTSTRUCT ps;
-		HDC hdc = BeginPaint(hWnd, &ps);
-
-		// Set the desired background color
-		SetBkColor(hdc, RGB(25, 25, 25));
-
-		// Paint the entire client area with the background color
-		RECT rect;
-		GetClientRect(hWnd, &rect);
-		FillRect(hdc, &rect, CreateSolidBrush(RGB(25, 25, 25)));
-
-		DrawTextOnMainWindow(hWnd);
-
-		EndPaint(hWnd, &ps);
+		fileExplorer->OnPaint(wParam, lParam);
 		return 0;
 	}
 	break;
@@ -120,9 +113,7 @@ LRESULT CALLBACK FileExplorerProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM
 	}
 
 	return CallWindowProc((WNDPROC)GetWindowLongPtr(hWnd, GWLP_USERDATA), hWnd, message, wParam, lParam);
-
 }
-
 
 void UI_CreateFileExplorer(HWND parent)
 {
@@ -134,15 +125,41 @@ void UI_CreateFileExplorer(HWND parent)
 
 	auto height = r.bottom - r.top;
 
-	g_hFileExplorer = CreateWindowExA(0, "STATIC", NULL, WS_CHILD | WS_VISIBLE | WS_BORDER,
-		0, 58, 400, height, parent, (HMENU)IDM_FILEEXPLORER, GetModuleHandle(NULL), NULL);
+	fileExplorer = std::unique_ptr<cFileExplorer>(new cFileExplorer(parent, 
+		CreateWindowExW(0, L"STATIC", NULL, WS_CHILD | WS_VISIBLE | WS_BORDER,
+		0, 58, 400, height, parent, (HMENU)IDM_FILEEXPLORER, GetModuleHandle(NULL), NULL)));
 
-	SetWindowLongPtr(g_hFileExplorer, GWLP_USERDATA, (LONG_PTR)GetWindowLongPtr(g_hFileExplorer, GWLP_WNDPROC));
-	SetWindowLongPtr(g_hFileExplorer, GWLP_WNDPROC, (LONG_PTR)FileExplorerProc);
+	fileExplorer->rect.left = 0;
+	fileExplorer->rect.right = 400;
+	fileExplorer->rect.top = 58;
+	fileExplorer->rect.bottom = height;
+
+
+	SetWindowLongPtr(fileExplorer->hWnd, GWLP_USERDATA, (LONG_PTR)GetWindowLongPtr(fileExplorer->hWnd, GWLP_WNDPROC));
+	SetWindowLongPtr(fileExplorer->hWnd, GWLP_WNDPROC, (LONG_PTR)fileExplorer->ProcHandler);
 
 }
-
-void UI_ResizeFileExplorer(uint32_t width, uint32_t height)
+void cFileExplorer::OnResize(uint32_t width, uint32_t height) 
 {
-	SetWindowPos(g_hFileExplorer, NULL, 0, 58, width * 0.25f, height, SWP_NOMOVE | SWP_NOZORDER);
+
+	fileExplorer->rect.bottom = height - 58;
+
+
+	SetWindowPos(hWnd, NULL, 0, 58, fileExplorer->rect.right, fileExplorer->rect.bottom, SWP_NOZORDER);
+}
+void cFileExplorer::OnPaint(WPARAM wParam, LPARAM lParam)
+{
+	PAINTSTRUCT ps;
+	HDC hdc = BeginPaint(hWnd, &ps);
+
+	SetBkColor(hdc, RGB(25, 25, 25));
+
+	RECT rect;
+	GetClientRect(hWnd, &rect);
+	FillRect(hdc, &rect, CreateSolidBrush(RGB(25, 25, 25)));
+
+	DrawTextOnMainWindow(hWnd);
+
+	EndPaint(hWnd, &ps);
+	return;
 }

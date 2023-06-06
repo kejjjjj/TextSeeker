@@ -140,6 +140,7 @@
     <ClInclude Include="Resource.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="TextSeeker.h" />
+    <ClInclude Include="TextSeeker.hpp" />
     <ClInclude Include="ui_fileexplorer.hpp" />
     <ClInclude Include="ui_inputfields.hpp" />
   </ItemGroup>

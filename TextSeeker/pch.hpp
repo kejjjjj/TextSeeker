@@ -12,9 +12,11 @@
 #include "commctrl.h"
 #include "uxtheme.h"
 #include "Windowsx.h"
+#include <memory>
 
 #pragma comment(lib, "UxTheme.lib")
 
+#include "TextSeeker.hpp"
 #include "ui_inputfields.hpp"
 #include "ui_fileexplorer.hpp"
 
