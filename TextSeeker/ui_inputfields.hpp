@@ -9,6 +9,7 @@
 #define IDM_FILEEXPLORER 2002
 
 std::wstring UI_GetWindowText(HWND hWnd);
+bool isHovered(const RECT& r, const LPPOINT p);
 
 inline HWND g_hSearchBox;
 inline HFONT SegoeUI;

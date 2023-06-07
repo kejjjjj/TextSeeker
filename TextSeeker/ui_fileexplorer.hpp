@@ -13,24 +13,35 @@ struct ScrollMetrics
 	int scrollY;
 
 	int xMax;
+	int nPage;
 
 };
 
 #define EXPLORER_TOP_OFFSET 58
 
+LRESULT CALLBACK OwnerDrawButtonProc(HWND hWnd, UINT uMsg, WPARAM wParam,
+	LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData);
+
 struct sExplorerButton
 {
-	sExplorerButton(HWND hwnd, const UINT _id, const std::wstring& click_path) : hWnd(hwnd), path(click_path), id(_id) {
+	sExplorerButton(HWND hwnd, const UINT _id, const sFile& _file, const RECT& bounds, HFONT _font) 
+		: hWnd(hwnd), id(_id), file(_file), rect(bounds), font(_font) {
 		
 
 	}
-	~sExplorerButton()
+	~sExplorerButton() = default;
+
+	void Destroy()
 	{
 		DestroyWindow(hWnd);
+		DeleteObject(font);
 	}
+
+	sFile file;
 	HWND hWnd;
-	std::wstring path;
 	UINT id;
+	RECT rect;
+	HFONT font;
 };
 
 class cFileExplorer : public cSeekerWindow
@@ -44,7 +55,11 @@ public:
 	void OnPaint(WPARAM wParam, LPARAM lParam);
 	void OnResize(uint32_t width, uint32_t height);
 	void OnCreateScroll(uint32_t numLines);
-	void OnHorizontalScroll(WPARAM wParam);
+	void OnVerticalScroll(WPARAM wParam);
+	sExplorerButton* FindButtonByHWND(HWND hWnd);
+	sExplorerButton* GetHoveredButton(POINT mouse);
+
+	void OnPopulateButtons(const std::wstring& loc);
 
 	static LRESULT CALLBACK ProcHandler(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 
@@ -59,7 +74,6 @@ private:
 
 inline std::unique_ptr<cFileExplorer> fileExplorer;
 
-void DrawTextOnMainWindow(HWND hWnd);
 void DrawTextOnWindow(HWND hWnd, const std::wstring& text, const RECT& where, UINT col = RGB(255, 255, 255), UINT fontSize = 20, bool vCenter = false, bool hCenter = false);
 void UI_CreateFileExplorer(HWND parent);
 

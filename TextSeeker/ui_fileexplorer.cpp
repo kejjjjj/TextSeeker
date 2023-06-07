@@ -9,22 +9,13 @@ LRESULT CALLBACK cFileExplorer::ProcHandler(HWND hWnd, UINT message, WPARAM wPar
 	switch (message)
 	{
 	case WM_CREATE:
-		hdc = GetDC(hWnd);
 
-		GetTextMetrics(hdc, &tm);
-
-		
-
-		scroll.horzScroll = tm.tmAveCharWidth;
-		scroll.upperWidth = (tm.tmPitchAndFamily & 1 ? 3 : 2) * scroll.horzScroll / 2;
-		scroll.vertScroll = tm.tmHeight + tm.tmExternalLeading;
-
-		scroll.xMax = 48 * scroll.horzScroll+ 12 * scroll.upperWidth;
-
-
-		ReleaseDC(hWnd, hdc);
+		fileExplorer->OnPopulateButtons(L"\\");
 
 		return 0;
+	case WM_SIZE:
+		/*fileExplorer->OnPopulateButtons();*/
+		break;
 	case WM_NCHITTEST:
 	{
 		POINT pt{};
@@ -84,11 +75,12 @@ LRESULT CALLBACK cFileExplorer::ProcHandler(HWND hWnd, UINT message, WPARAM wPar
 	case WM_MOUSEACTIVATE:
 	case WM_MOUSEMOVE:
 	{
+		POINT currentMousePos{};
+		GetCursorPos(&currentMousePos);
+
 		if (!isResizing)
 			break;
 
-		POINT currentMousePos{};
-		GetCursorPos(&currentMousePos);
 
 		ScreenToClient(hWnd, &currentMousePos);
 
@@ -128,13 +120,70 @@ LRESULT CALLBACK cFileExplorer::ProcHandler(HWND hWnd, UINT message, WPARAM wPar
 		return 0;
 	}
 
-	case WM_HSCROLL:
-		fileExplorer->OnHorizontalScroll(wParam);
+	case WM_VSCROLL:
+		fileExplorer->OnVerticalScroll(wParam);
 
 		//InvalidateRect(hWnd, NULL, TRUE);
 
 		return 0;
 	break;
+	case WM_COMMAND:
+		break;
+
+	case WM_DRAWITEM:
+	{
+		
+		LPDRAWITEMSTRUCT lpDrawItemStruct = (LPDRAWITEMSTRUCT)lParam;
+
+		if (lpDrawItemStruct->CtlType == ODT_BUTTON)
+		{
+			auto b = fileExplorer->FindButtonByHWND(lpDrawItemStruct->hwndItem);
+
+			if (!b) {
+				MessageBox(NULL, L"failed", L"yea", MB_USERICON);
+				break;
+			}
+			HDC hdcButton = lpDrawItemStruct->hDC;
+			RECT rect = lpDrawItemStruct->rcItem;
+			UINT state = lpDrawItemStruct->itemState;
+			b->rect = rect;
+			SetBkMode(hdcButton, TRANSPARENT);
+
+			SetTextColor(hdcButton, b->file.is_directory ? RGB(255, 255, 255) : RGB(128, 128, 128));
+
+			HBRUSH hBrush = CreateSolidBrush(RGB(25, 25, 25)); // Example: Gray when pressed, black otherwise
+
+
+			// Fill the button rectangle with the transparent brush
+			FillRect(hdcButton, &rect, hBrush);
+
+			// Draw the icon on the left side of the button
+			SHFILEINFO stFileInfo;
+			SHGetFileInfo(b->file.path.c_str(),
+				FILE_ATTRIBUTE_NORMAL,
+				&stFileInfo,
+				sizeof(stFileInfo),
+				SHGFI_ICON | SHGFI_SMALLICON);
+
+			DrawIcon(hdcButton, rect.left, rect.top, stFileInfo.hIcon);
+
+			DestroyIcon(stFileInfo.hIcon);
+
+			// Calculate the text rectangle (excluding the icon)
+			RECT textRect = rect;
+			textRect.left += GetSystemMetrics(SM_CXICON) * 1.25; // Adjust for the width of the icon
+
+			// Draw the button text
+			DrawText(hdcButton, b->file.name.c_str(), -1, &textRect, DT_SINGLELINE | DT_VCENTER);
+
+			// Cleanup: Delete the brush
+			DeleteObject(hBrush);
+
+			// Return TRUE to indicate that the drawing was handled
+			return TRUE;
+		}
+		break;
+	}
 	default:
 		break;
 	}
@@ -153,13 +202,15 @@ void UI_CreateFileExplorer(HWND parent)
 	auto height = r.bottom - r.top;
 
 	fileExplorer = std::unique_ptr<cFileExplorer>(new cFileExplorer(parent, 
-		CreateWindowExW(0, L"STATIC", NULL, WS_CHILD | WS_VISIBLE | WS_BORDER | WS_HSCROLL | WS_VSCROLL,
-		0, EXPLORER_TOP_OFFSET, 400, height, parent, (HMENU)IDM_FILEEXPLORER, GetModuleHandle(NULL), NULL)));
+		CreateWindowExW(0, L"STATIC", NULL, WS_CHILD | WS_VISIBLE | WS_BORDER | WS_VSCROLL,
+		0, EXPLORER_TOP_OFFSET, 250, height, parent, (HMENU)IDM_FILEEXPLORER, GetModuleHandle(NULL), NULL)));
 
 	fileExplorer->rect.left = 0;
-	fileExplorer->rect.right = 400;
+	fileExplorer->rect.right = 250;
 	fileExplorer->rect.top = EXPLORER_TOP_OFFSET;
 	fileExplorer->rect.bottom = height;
+
+	
 
 	//fileExplorer->current_directory.resize(MAX_PATH);
 
@@ -168,6 +219,8 @@ void UI_CreateFileExplorer(HWND parent)
 
 	SetWindowLongPtr(fileExplorer->hWnd, GWLP_USERDATA, (LONG_PTR)GetWindowLongPtr(fileExplorer->hWnd, GWLP_WNDPROC));
 	SetWindowLongPtr(fileExplorer->hWnd, GWLP_WNDPROC, (LONG_PTR)fileExplorer->ProcHandler);
+
+	SendMessage(fileExplorer->hWnd, WM_CREATE, NULL, NULL);
 
 }
 void cFileExplorer::OnResize(uint32_t width, uint32_t height) 
@@ -183,7 +236,7 @@ void cFileExplorer::OnCreateScroll(uint32_t numLines)
 
 
 	uint32_t width = rect.right - rect.left;
-	uint32_t height = rect.bottom - rect.top;
+	uint32_t height = rect.bottom - rect.top - 58;
 
 	SCROLLINFO si;
 
@@ -192,19 +245,19 @@ void cFileExplorer::OnCreateScroll(uint32_t numLines)
 	si.fMask = SIF_RANGE | SIF_PAGE;
 	si.nMin = 0;
 	si.nMax = numLines - 1;
-	si.nPage = height / sScroll.vertScroll;
+	si.nPage = height / sScroll.nPage/3;
 	SetScrollInfo(hWnd, SB_VERT, &si, TRUE);
 
-	// Set the horizontal scrolling range and page size. 
-	si.cbSize = sizeof(si);
-	si.fMask = SIF_RANGE | SIF_PAGE;
-	si.nMin = 0;
-	si.nMax = 2 + sScroll.xMax / sScroll.horzScroll;
-	si.nPage = width / sScroll.horzScroll;
-	SetScrollInfo(hWnd, SB_HORZ, &si, TRUE);
+	//// Set the horizontal scrolling range and page size. 
+	//si.cbSize = sizeof(si);
+	//si.fMask = SIF_RANGE | SIF_PAGE;
+	//si.nMin = 0;
+	//si.nMax = 2 + sScroll.xMax / sScroll.horzScroll;
+	//si.nPage = width / sScroll.horzScroll;
+	//SetScrollInfo(hWnd, SB_HORZ, &si, TRUE);
 
 }
-void cFileExplorer::OnHorizontalScroll(WPARAM wParam)
+void cFileExplorer::OnVerticalScroll(WPARAM wParam)
 {
 	SCROLLINFO si;
 	ScrollMetrics& scroll = sScroll;
@@ -212,30 +265,40 @@ void cFileExplorer::OnHorizontalScroll(WPARAM wParam)
 	// Get all the vertial scroll bar information.
 	si.cbSize = sizeof(si);
 	si.fMask = SIF_ALL;
+	GetScrollInfo(hWnd, SB_VERT, &si);
 
 	// Save the position for comparison later on.
-	GetScrollInfo(hWnd, SB_HORZ, &si);
-	scroll.scrollX = si.nPos;
-
+	scroll.scrollY = si.nPos;
 	switch (LOWORD(wParam))
 	{
-		// User clicked the left arrow.
-	case SB_LINELEFT:
+
+		// User clicked the HOME keyboard key.
+	case SB_TOP:
+		si.nPos = si.nMin;
+		break;
+
+		// User clicked the END keyboard key.
+	case SB_BOTTOM:
+		si.nPos = si.nMax;
+		break;
+
+		// User clicked the top arrow.
+	case SB_LINEUP:
 		si.nPos -= 1;
 		break;
 
-		// User clicked the right arrow.
-	case SB_LINERIGHT:
+		// User clicked the bottom arrow.
+	case SB_LINEDOWN:
 		si.nPos += 1;
 		break;
 
-		// User clicked the scroll bar shaft left of the scroll box.
-	case SB_PAGELEFT:
+		// User clicked the scroll bar shaft above the scroll box.
+	case SB_PAGEUP:
 		si.nPos -= si.nPage;
 		break;
 
-		// User clicked the scroll bar shaft right of the scroll box.
-	case SB_PAGERIGHT:
+		// User clicked the scroll bar shaft below the scroll box.
+	case SB_PAGEDOWN:
 		si.nPos += si.nPage;
 		break;
 
@@ -243,24 +306,52 @@ void cFileExplorer::OnHorizontalScroll(WPARAM wParam)
 	case SB_THUMBTRACK:
 		si.nPos = si.nTrackPos;
 		break;
+
 	default:
 		break;
 	}
 
 	// Set the position and then retrieve it.  Due to adjustments
-	   // by Windows it may not be the same as the value set.
+	// by Windows it may not be the same as the value set.
 	si.fMask = SIF_POS;
-	SetScrollInfo(hWnd, SB_HORZ, &si, TRUE);
-	GetScrollInfo(hWnd, SB_HORZ, &si);
+	SetScrollInfo(hWnd, SB_VERT, &si, TRUE);
+	GetScrollInfo(hWnd, SB_VERT, &si);
 
-	// If the position has changed, scroll the window.
-	if (si.nPos != scroll.scrollX)
+	auto _rect = rect;
+	_rect.top -= 45;
+
+	// If the position has changed, scroll window and update it.
+	if (si.nPos != scroll.scrollY)
 	{
-		ScrollWindow(hWnd, scroll.horzScroll * (scroll.scrollX - si.nPos), 0, NULL, NULL);
+		ScrollWindow(hWnd, 0, scroll.vertScroll * (scroll.scrollY - si.nPos), NULL, &_rect);
 		UpdateWindow(hWnd);
-		InvalidateRect(hWnd, NULL, TRUE);
-
+		
 	}
+
+}
+sExplorerButton* cFileExplorer::FindButtonByHWND(HWND hWnd)
+{
+	for (auto& i : buttons) {
+		if (i.hWnd == hWnd)
+			return &i;
+	}
+	return 0;
+}
+sExplorerButton* cFileExplorer::GetHoveredButton(POINT mouse)
+{
+
+	ScreenToClient(hWnd, &mouse);
+
+	std::cout << "x: " << mouse.x << "\ny: " << mouse.y << '\n';
+
+	for (auto& i : buttons) {
+		if (isHovered(i.rect, &mouse)) {
+			
+			return &i;
+		}
+		
+	}
+	return 0;
 
 }
 void cFileExplorer::OnPaint(WPARAM wParam, LPARAM lParam)
@@ -268,76 +359,178 @@ void cFileExplorer::OnPaint(WPARAM wParam, LPARAM lParam)
 	PAINTSTRUCT ps;
 	HDC hdc = BeginPaint(hWnd, &ps);
 	SCROLLINFO si;
-	
 	TEXTMETRIC tm;
+
+
 	auto& scroll = fileExplorer->sScroll;
 
-	buttons.clear();
+	GetTextMetrics(hdc, &tm);
 
-	// Get vertical scroll bar position.
+	scroll.horzScroll = tm.tmAveCharWidth / 1.5;
+	scroll.upperWidth = (tm.tmPitchAndFamily & 1 ? 3 : 2) * scroll.horzScroll / 2;
+	//scroll.vertScroll = (tm.tmHeight);
+
 	si.cbSize = sizeof(si);
 	si.fMask = SIF_POS;
 	GetScrollInfo(hWnd, SB_VERT, &si);
 	scroll.scrollY = si.nPos;
 
-	// Get horizontal scroll bar position.
 	GetScrollInfo(hWnd, SB_HORZ, &si);
 	scroll.scrollX = si.nPos;
 
 
+	OnCreateScroll(buttons.size());
 
-	GetTextMetrics(hdc, &tm);
-
-
-
-	scroll.horzScroll = tm.tmAveCharWidth / 1.5;
-	scroll.upperWidth = (tm.tmPitchAndFamily & 1 ? 3 : 2) * scroll.horzScroll / 2;
-	scroll.vertScroll = (tm.tmHeight + tm.tmExternalLeading) * 1.5;
 
 	SetBkColor(hdc, RGB(25, 25, 25));
-
+	
 	RECT rect;
 	GetClientRect(hWnd, &rect);
-	FillRect(hdc, &rect, CreateSolidBrush(RGB(25, 25, 25)));
-
-	
-	std::vector<sFile> files;
-	if (fs::files_in_directory(L"C:\\", files)) {
-
-		auto longest = std::max_element(files.begin(), files.end(), [](const sFile& a, const sFile& b) {return a.name.size() < b.name.size(); });
-
-		auto it = files.begin();
-		UINT i = 2500;
-		for (it = files.begin(); it != files.end(); ++it) {
-			std::wcout << it->name << '\n';
-			
-			//FIXME - this part keeps sending the WM_PAINT message again to this hwnd and creates a recursion hell....
-			//SOLUTION - don't call this from WM_PAINT
-			buttons.push_back(
-				{
-					CreateWindowExW(0, L"BUTTON", NULL, WS_CHILD | WS_VISIBLE | BS_ICON | BS_LEFT | BS_COMMANDLINK, 25, rect.top += 45, 150, 30, hWnd, (HMENU)i, GetModuleHandle(NULL), NULL),
-					i,
-					it->path
-				});
-			//HICON icon;
-
-
-			//ExtractIconEx(buttons.back().path.c_str(), 0, NULL, &icon, 1);
-			HICON hIcon = LoadIcon(NULL, IDI_INFORMATION);
-
-			SendMessage(buttons.back().hWnd, BM_SETIMAGE, IMAGE_ICON, (LPARAM)hIcon);
-
-			DestroyIcon(hIcon);
-			++i;
-		}
-		MessageBox(NULL, L"AAA", L"aaaa", MB_ICONERROR);
-		std::wcout << L"longest elem: " << longest->name << '\n';
-		scroll.xMax = (int)longest->name.length() * scroll.horzScroll;
-
-		OnCreateScroll(files.size());
-
-	}
+	auto brush = CreateSolidBrush(RGB(25, 25, 25));
+	FillRect(hdc, &rect, brush);
+	DeleteObject(brush);
 
 	EndPaint(hWnd, &ps);
 	return;
+}
+
+void cFileExplorer::OnPopulateButtons(const std::wstring& loc)
+{
+
+	SCROLLINFO si;
+	TEXTMETRIC tm;
+	RECT r;
+	SHFILEINFO stFileInfo;
+	HDC hdc;
+	ScrollMetrics& scroll = fileExplorer->sScroll;
+	std::vector<sFile> files;
+	UINT hmenu = 2500;
+	HWND hwnd;
+	HFONT segoeUI;
+
+	hdc = GetDC(hWnd);
+	GetTextMetrics(hdc, &tm);
+
+	auto copy = loc;
+
+	scroll.horzScroll = tm.tmAveCharWidth / 1.5;
+	scroll.upperWidth = (tm.tmPitchAndFamily & 1 ? 3 : 2) * scroll.horzScroll / 2;
+	scroll.vertScroll = /*(tm.tmHeight + tm.tmExternalLeading) + */45;
+	
+
+	for (auto& i : buttons) {
+		i.Destroy(); //kill window & delete font
+	}
+
+	buttons.clear();
+
+	GetClientRect(hWnd, &r);
+
+	r.top = 6;
+	if (fs::files_in_directory(copy, files)) {
+		auto longest = std::max_element(files.begin(), files.end(), [](const sFile& a, const sFile& b) {return a.name.size() < b.name.size(); });
+		scroll.nPage = (tm.tmHeight);
+		for (auto it = files.begin(); it != files.end(); ++it) {
+			std::wcout << it->name << '\n';
+
+			r.left = 6;
+			
+			r.right = r.left + rect.right;
+			r.bottom = r.top + 30;
+			
+
+			segoeUI = CreateFont(20, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+				DEFAULT_CHARSET, OUT_DEFAULT_PRECIS,
+				CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY,
+				DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
+
+			hwnd = CreateWindowExW(0, L"BUTTON", it->name.c_str(), WS_CHILD | WS_VISIBLE | BS_OWNERDRAW,
+				0, r.top, rect.right, 30, hWnd, (HMENU)hmenu, GetModuleHandle(NULL), NULL);
+			SetWindowSubclass(hwnd, &OwnerDrawButtonProc, 3000, 0);
+			buttons.push_back(
+				{
+					hwnd,
+					hmenu,
+					*it,
+					r,
+					segoeUI
+				});
+
+			r.top += 45;
+			SHGetFileInfo(it->path.c_str(), FILE_ATTRIBUTE_NORMAL, &stFileInfo, sizeof(stFileInfo), SHGFI_ICON | SHGFI_SMALLICON);
+
+
+
+			SelectObject(hdc, segoeUI);
+
+			
+			//SetWindowTheme(hwnd, L"Explorer", NULL);
+
+			//SendMessage(hwnd, BM_SETSTATE, BST_UNCHECKED, FALSE);
+
+			//SendMessage(hwnd, BM_SETIMAGE, IMAGE_ICON, (LPARAM)stFileInfo.hIcon);
+			SendMessage(hwnd, WM_SETFONT, (WPARAM)segoeUI, TRUE);
+
+			//// Clean up
+			//DeleteObject(segoeUI);
+
+			//ShowWindow(buttons.back().hWnd, TRUE);
+			DestroyIcon(stFileInfo.hIcon);
+			++hmenu;
+		}
+		std::wcout << L"longest elem: " << longest->name << '\n';
+		scroll.xMax = (int)longest->name.length() * scroll.horzScroll;
+
+		
+
+	}
+
+	ReleaseDC(hWnd, hdc);
+}
+
+
+LRESULT CALLBACK OwnerDrawButtonProc(HWND hWnd, UINT uMsg, WPARAM wParam,
+	LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData)
+
+{
+	sExplorerButton* b = 0;
+	HCURSOR hCursor;
+
+	b = fileExplorer->FindButtonByHWND(hWnd);
+
+	if (!b)
+		return DefSubclassProc(hWnd, uMsg, wParam, lParam);
+
+	switch (uMsg)
+	{
+	case WM_MOUSEMOVE:
+		
+
+		b->file.is_directory ? SetCursor(LoadCursor(NULL, IDC_HAND)) : SetCursor(LoadCursor(NULL, IDC_NO));
+
+
+		break;
+	case WM_LBUTTONDOWN:
+		
+
+		if (!b->file.is_directory) {
+			//MessageBox(NULL, L"Item must be a folder", L"Error!", MB_ICONERROR);
+			break;
+		}
+
+		fileExplorer->OnPopulateButtons(b->file.path);
+
+		std::wcout << b->file.path << '\n';
+		break;
+	case WM_NCDESTROY:
+		RemoveWindowSubclass(hWnd, &OwnerDrawButtonProc, 1);
+		break;
+	default:
+		break;
+	}
+
+
+	return DefSubclassProc(hWnd, uMsg, wParam, lParam);
+
+
 }

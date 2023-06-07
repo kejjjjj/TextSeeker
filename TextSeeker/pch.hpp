@@ -22,10 +22,10 @@ namespace _fs = std::filesystem;
 
 #pragma comment(lib, "UxTheme.lib")
 
+#include "u_filesystem.hpp"
 #include "TextSeeker.hpp"
 #include "ui_inputfields.hpp"
 #include "ui_fileexplorer.hpp"
-#include "u_filesystem.hpp"
 
 inline HWND g_hMainWnd;
 inline bool b_LHeld = false;

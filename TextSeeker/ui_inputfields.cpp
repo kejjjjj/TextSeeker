@@ -17,6 +17,12 @@ std::wstring UI_GetWindowText(HWND hWnd)
 
     return buf;
 }
+bool isHovered(const RECT& r, const LPPOINT p)
+{
+    return 
+        p->x > r.left && p->x < r.right &&
+        p->y > r.top && p->y < r.bottom;
+}
 void CreateSearchBox(HWND parent)
 {
     RECT r;

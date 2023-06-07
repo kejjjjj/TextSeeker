@@ -56,6 +56,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     AllocConsole();
     freopen_s(&_con, "CONOUT$", "w", stdout);
 
+    std::cout << "hello!\n";
+
     HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_TEXTSEEKER));
 
     MSG msg;
@@ -118,7 +120,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    hInst = hInstance; // Store instance handle in our global variable
 
    HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-      CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
+      CW_USEDEFAULT, 0, 1000, 720, nullptr, nullptr, hInstance, nullptr);
 
    if (!hWnd)
    {
@@ -129,32 +131,6 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    UpdateWindow(hWnd);
 
    return TRUE;
-}
-void DrawTextOnMainWindow(HWND hWnd)
-{
-    HDC hdc = GetDC(hWnd);
-    RECT rect;
-    GetClientRect(hWnd, &rect);
-
-    // Set the text color and background color
-    SetTextColor(hdc, RGB(255, 255, 255));  // White color
-    SetBkMode(hdc, TRANSPARENT);
-   // SetBkColor(hdc, RGB(0, 0, 0));          // Black background color
-
-    // Create and select a font
-    HFONT segoeUI = CreateFont(20, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
-        DEFAULT_CHARSET, OUT_DEFAULT_PRECIS,
-        CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY,
-        DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
-
-    SelectObject(hdc, segoeUI);
-
-    // Draw the text "Hello!" on the main window
-    DrawText(hdc, L"Hello, world!", -1, &rect, DT_SINGLELINE | DT_CENTER | DT_VCENTER);
-
-    // Clean up
-    DeleteObject(segoeUI);
-    ReleaseDC(hWnd, hdc);
 }
 void DrawTextOnWindow(HWND hWnd, const std::wstring& text, const RECT& where, UINT col, UINT fontSize, bool vCenter, bool hCenter)
 {
