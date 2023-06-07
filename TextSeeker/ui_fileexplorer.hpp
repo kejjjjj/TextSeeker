@@ -18,6 +18,21 @@ struct ScrollMetrics
 
 #define EXPLORER_TOP_OFFSET 58
 
+struct sExplorerButton
+{
+	sExplorerButton(HWND hwnd, const UINT _id, const std::wstring& click_path) : hWnd(hwnd), path(click_path), id(_id) {
+		
+
+	}
+	~sExplorerButton()
+	{
+		DestroyWindow(hWnd);
+	}
+	HWND hWnd;
+	std::wstring path;
+	UINT id;
+};
+
 class cFileExplorer : public cSeekerWindow
 {
 public:
@@ -25,7 +40,7 @@ public:
 	{
 
 	}
-
+	
 	void OnPaint(WPARAM wParam, LPARAM lParam);
 	void OnResize(uint32_t width, uint32_t height);
 	void OnCreateScroll(uint32_t numLines);
@@ -35,6 +50,8 @@ public:
 
 	HWND hWnd;
 	ScrollMetrics sScroll{};
+	std::list<sExplorerButton> buttons;
+	std::wstring current_directory;
 private:
 	
 	HWND parent;

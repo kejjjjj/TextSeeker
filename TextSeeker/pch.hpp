@@ -15,6 +15,8 @@
 #include "Windowsx.h"
 #include <memory>
 #include <filesystem>
+#include <list>
+#include <ShlObj_core.h>
 
 namespace _fs = std::filesystem;
 

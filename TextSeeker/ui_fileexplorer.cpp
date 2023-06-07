@@ -161,6 +161,10 @@ void UI_CreateFileExplorer(HWND parent)
 	fileExplorer->rect.top = EXPLORER_TOP_OFFSET;
 	fileExplorer->rect.bottom = height;
 
+	//fileExplorer->current_directory.resize(MAX_PATH);
+
+	//SHGetFolderPathW(NULL, CSIDL_MYCOMPUTER, NULL, 0, fileExplorer->current_directory.data());
+
 
 	SetWindowLongPtr(fileExplorer->hWnd, GWLP_USERDATA, (LONG_PTR)GetWindowLongPtr(fileExplorer->hWnd, GWLP_WNDPROC));
 	SetWindowLongPtr(fileExplorer->hWnd, GWLP_WNDPROC, (LONG_PTR)fileExplorer->ProcHandler);
@@ -264,9 +268,11 @@ void cFileExplorer::OnPaint(WPARAM wParam, LPARAM lParam)
 	PAINTSTRUCT ps;
 	HDC hdc = BeginPaint(hWnd, &ps);
 	SCROLLINFO si;
-
+	
 	TEXTMETRIC tm;
 	auto& scroll = fileExplorer->sScroll;
+
+	buttons.clear();
 
 	// Get vertical scroll bar position.
 	si.cbSize = sizeof(si);
@@ -284,11 +290,9 @@ void cFileExplorer::OnPaint(WPARAM wParam, LPARAM lParam)
 
 
 
-	scroll.horzScroll = tm.tmAveCharWidth / 3.2;
+	scroll.horzScroll = tm.tmAveCharWidth / 1.5;
 	scroll.upperWidth = (tm.tmPitchAndFamily & 1 ? 3 : 2) * scroll.horzScroll / 2;
 	scroll.vertScroll = (tm.tmHeight + tm.tmExternalLeading) * 1.5;
-
-	scroll.xMax = 256 * scroll.horzScroll + 12 * scroll.upperWidth;
 
 	SetBkColor(hdc, RGB(25, 25, 25));
 
@@ -296,15 +300,42 @@ void cFileExplorer::OnPaint(WPARAM wParam, LPARAM lParam)
 	GetClientRect(hWnd, &rect);
 	FillRect(hdc, &rect, CreateSolidBrush(RGB(25, 25, 25)));
 
+	
 	std::vector<sFile> files;
 	if (fs::files_in_directory(L"C:\\", files)) {
-		OnCreateScroll(files.size());
-		rect.left = scroll.horzScroll * (1 - scroll.scrollX);
 
-		for (auto& i : files) {
-			DrawTextOnWindow(hWnd, i.path.c_str(), rect, RGB(255, 255, 255), 20, FALSE, FALSE);
-			rect.top += 25;
+		auto longest = std::max_element(files.begin(), files.end(), [](const sFile& a, const sFile& b) {return a.name.size() < b.name.size(); });
+
+		auto it = files.begin();
+		UINT i = 2500;
+		for (it = files.begin(); it != files.end(); ++it) {
+			std::wcout << it->name << '\n';
+			
+			//FIXME - this part keeps sending the WM_PAINT message again to this hwnd and creates a recursion hell....
+			//SOLUTION - don't call this from WM_PAINT
+			buttons.push_back(
+				{
+					CreateWindowExW(0, L"BUTTON", NULL, WS_CHILD | WS_VISIBLE | BS_ICON | BS_LEFT | BS_COMMANDLINK, 25, rect.top += 45, 150, 30, hWnd, (HMENU)i, GetModuleHandle(NULL), NULL),
+					i,
+					it->path
+				});
+			//HICON icon;
+
+
+			//ExtractIconEx(buttons.back().path.c_str(), 0, NULL, &icon, 1);
+			HICON hIcon = LoadIcon(NULL, IDI_INFORMATION);
+
+			SendMessage(buttons.back().hWnd, BM_SETIMAGE, IMAGE_ICON, (LPARAM)hIcon);
+
+			DestroyIcon(hIcon);
+			++i;
 		}
+		MessageBox(NULL, L"AAA", L"aaaa", MB_ICONERROR);
+		std::wcout << L"longest elem: " << longest->name << '\n';
+		scroll.xMax = (int)longest->name.length() * scroll.horzScroll;
+
+		OnCreateScroll(files.size());
+
 	}
 
 	EndPaint(hWnd, &ps);

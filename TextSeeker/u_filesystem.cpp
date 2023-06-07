@@ -25,6 +25,27 @@ bool fs::files_in_directory(const std::wstring& directory, std::vector<sFile>& o
 		return false;
 
 	sFile file;
+	if (directory.empty() || directory == L"\\") {
+		WCHAR drives[256];
+		DWORD size = GetLogicalDriveStringsW(256, drives);
+
+		if (size > 0 && size <= 256) {
+			WCHAR* p = drives;
+			while (*p != L'\0') {
+				file.is_directory = true;
+				file.name = std::wstring(p).front();
+				file.path = p;
+				out.push_back(file);
+
+				std::wcout << "found fixed drive: " << p << std::endl;
+				p += wcslen(p) + 1;
+			}
+		}
+
+				
+
+		return true;
+	}
 
 	for (const auto& entry : _fs::directory_iterator(directory)) {
 		file.path = entry.path().wstring();
