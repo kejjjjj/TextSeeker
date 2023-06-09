@@ -80,10 +80,9 @@ LRESULT CALLBACK cFileExplorer::ProcHandler(HWND hWnd, UINT message, WPARAM wPar
 
 		if (!isResizing)
 			break;
-
-
+		 
 		ScreenToClient(hWnd, &currentMousePos);
-
+		
 		RECT rcWindow{}, parentWindow{};
 		GetWindowRect(hWnd, &rcWindow);
 		GetWindowRect(hWnd, &parentWindow);
@@ -102,7 +101,11 @@ LRESULT CALLBACK cFileExplorer::ProcHandler(HWND hWnd, UINT message, WPARAM wPar
 
 		lastMousePos = currentMousePos;
 
+		
+
 		InvalidateRect(hWnd, NULL, TRUE);
+		UpdateWindow(hWnd);
+
 		break;
 
 	}
@@ -112,7 +115,6 @@ LRESULT CALLBACK cFileExplorer::ProcHandler(HWND hWnd, UINT message, WPARAM wPar
 		isResizing = false;
 
 		ReleaseCapture();
-		break;
 		break;
 	case WM_PAINT:
 	{
@@ -136,7 +138,6 @@ LRESULT CALLBACK cFileExplorer::ProcHandler(HWND hWnd, UINT message, WPARAM wPar
 	case WM_DRAWITEM:
 	{
 		LPDRAWITEMSTRUCT lpDrawItemStruct = (LPDRAWITEMSTRUCT)lParam;
-
 		if (lpDrawItemStruct->CtlType == ODT_BUTTON)
 		{
 			if(wParam >= IDM_DIRECTORY_ITEMS && wParam < IDM_DIRECTORY_ITEMS + fileExplorer->buttons.size())
@@ -204,16 +205,21 @@ void UI_CreateFileExplorer(HWND parent)
 
 	auto height = r.bottom - r.top;
 
-	fileExplorer = std::unique_ptr<cFileExplorer>(new cFileExplorer(parent, 
-		CreateWindowExW(0, L"STATIC", NULL, WS_CHILD | WS_VISIBLE | WS_BORDER | WS_VSCROLL,
-		0, EXPLORER_TOP_OFFSET, 250, height, parent, (HMENU)IDM_FILEEXPLORER, GetModuleHandle(NULL), NULL)));
+	HWND hwnd = CreateWindowExW(0, L"STATIC", NULL, WS_CHILD | WS_VISIBLE | WS_BORDER | WS_VSCROLL,
+		0, EXPLORER_TOP_OFFSET, 250, height, parent, (HMENU)IDM_FILEEXPLORER, GetModuleHandle(NULL), NULL);
+
+	if (!IsWindow(hwnd)) {
+		throw (std::format(L"exception caught while creating window:\n{}", get_last_error()));
+		return;
+	}
+
+	fileExplorer = std::unique_ptr<cFileExplorer>(new cFileExplorer(parent, hwnd));
 
 	fileExplorer->rect.left = 0;
 	fileExplorer->rect.right = 250;
 	fileExplorer->rect.top = EXPLORER_TOP_OFFSET;
 	fileExplorer->rect.bottom = height;
 
-	
 
 	//fileExplorer->current_directory.resize(MAX_PATH);
 
@@ -338,7 +344,8 @@ void cFileExplorer::OnWheelScroll(WPARAM wParam)
 	int zDelta = GET_WHEEL_DELTA_WPARAM(wParam);
 	int nVScrollAmount = (zDelta / WHEEL_DELTA) * nScrollLines;
 
-	SendMessage(hWnd, WM_VSCROLL, SB_LINEUP, nVScrollAmount);
+	
+	SendMessage(hWnd, WM_VSCROLL, zDelta > 0 ? SB_LINEUP : SB_LINEDOWN, nVScrollAmount);
 }
 sExplorerButton* cFileExplorer::FindButtonByHWND(HWND hWnd)
 {
@@ -518,7 +525,8 @@ LRESULT CALLBACK cFileExplorer::OwnerDrawButtonProc(HWND hWnd, UINT uMsg, WPARAM
 		}
 
 		fileExplorer->OnPopulateButtons(b->file.path);
-
+		InvalidateRect(fileExplorer->hWnd, NULL, NULL);
+		UpdateWindow(fileExplorer->hWnd);
 		std::wcout << b->file.path << '\n';
 		break;
 	case WM_NCDESTROY:

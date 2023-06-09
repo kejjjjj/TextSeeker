@@ -62,7 +62,7 @@ public:
 	void OnPopulateButtons(const std::wstring& loc);
 
 	LRESULT OnRenderDirectoryButton(LPDRAWITEMSTRUCT lpDrawItemStruct);
-
+	
 	static LRESULT CALLBACK ProcHandler(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 	static LRESULT CALLBACK OwnerDrawButtonProc(HWND hWnd, UINT uMsg, WPARAM wParam,
 		LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData);
@@ -73,6 +73,7 @@ public:
 
 	std::list<std::string> undoHistory;
 	std::list<std::string> redoHistory;
+
 private:
 	
 	HWND parent;

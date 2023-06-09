@@ -23,52 +23,76 @@ bool isHovered(const RECT& r, const LPPOINT p)
         p->x > r.left && p->x < r.right &&
         p->y > r.top && p->y < r.bottom;
 }
-void CreateSearchBox(HWND parent)
+
+void UI_CreateSearchBox(HWND parent)
 {
     RECT r;
     GetClientRect(parent, &r);
 
     auto width = r.right - r.left;
 
-    g_hSearchBox = CreateWindowExW(0, L"EDIT", L"aaa", WS_CHILD | WS_VISIBLE | WS_BORDER,
-        23, 23, width * 0.6666f, 30, parent, (HMENU)IDM_SEARCHBOX, GetModuleHandle(NULL), NULL);
+    HWND hwnd = CreateWindowExW(0, L"STATIC", NULL, WS_CHILD | WS_VISIBLE | WS_BORDER,
+        0, 23, 300, 30, parent, (HMENU)IDM_TOPBAR, GetModuleHandle(NULL), NULL);
 
-    SegoeUI = CreateFont(19, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+
+    if (!IsWindow(hwnd)) {
+        throw (std::format(L"exception caught while creating window:\n{}", get_last_error()));
+        return;
+    }
+
+    HFONT SegoeUI = CreateFont(19, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
         DEFAULT_CHARSET, OUT_DEFAULT_PRECIS,
         CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY,
         DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
 
+    fileNavigation = std::unique_ptr<cFileNavigation>(new cFileNavigation(parent, hwnd, SegoeUI));
 
-    // Center the text vertically
-    RECT rect{};
 
-    rect.top += 10;
-    rect.bottom += 10;
-    rect.left = 0;
-    rect.right = 0;
 
-   
 
-    SendMessage(g_hSearchBox, WM_SETFONT, (WPARAM)SegoeUI, TRUE);
-    SendMessage(g_hSearchBox, EM_SETRECT, TRUE, (LPARAM)&rect);
-    SendMessage(g_hSearchBox, EM_LIMITTEXT, MAX_PATH, TRUE);
-    SetWindowText(g_hSearchBox, L"Search...");
+    SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)GetWindowLongPtr(hwnd, GWLP_WNDPROC));
+    SetWindowLongPtr(hwnd, GWLP_WNDPROC, (LONG_PTR)fileNavigation->ProcHandler);
 
-    SetWindowLongPtr(g_hSearchBox, GWLP_USERDATA, (LONG_PTR)GetWindowLongPtr(g_hSearchBox, GWLP_WNDPROC));
-    SetWindowLongPtr(g_hSearchBox, GWLP_WNDPROC, (LONG_PTR)SearchBoxProc);
+    SendMessage(hwnd, WM_CREATE, NULL, NULL);
+
 }
-LRESULT CALLBACK SearchBoxProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+
+LRESULT CALLBACK cFileNavigation::ProcHandler(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-    HDC hdc;
     std::wstring str;
+    HWND hwnd;
     switch (message)
     {
+    case WM_CREATE:
+        fileNavigation->g_hBackButton = CreateWindowExW(0, L"BUTTON", L"BACK", WS_CHILD | WS_VISIBLE | BS_OWNERDRAW,
+            6, 0, 30, 30, fileNavigation->hWnd, (HMENU)IDM_BACKBUTTON, GetModuleHandle(NULL), NULL);
+
+        fileNavigation->g_hForwardButton = CreateWindowExW(0, L"BUTTON", L"FORWARD", WS_CHILD | WS_VISIBLE | BS_OWNERDRAW,
+            40, 0, 30, 30, fileNavigation->hWnd, (HMENU)IDM_FORWARDBUTTON, GetModuleHandle(NULL), NULL);
+
+        fileNavigation->g_hSearchBar = CreateWindowExW(0, L"EDIT", L"aaa", WS_CHILD | WS_VISIBLE | WS_BORDER,
+            40*2+15, 0, 300, 30, fileNavigation->hWnd, (HMENU)IDM_SEARCHBOX, GetModuleHandle(NULL), NULL);
+
+        hwnd = fileNavigation->g_hSearchBar;
+
+        SendMessage(hwnd, WM_SETFONT, (WPARAM)fileNavigation->font, TRUE);
+       // SendMessage(hwnd, EM_SETRECT, TRUE, (LPARAM)&rect);
+        SendMessage(hwnd, EM_LIMITTEXT, MAX_PATH, TRUE);
+        SetWindowText(hwnd, L"Search...");
+
+        if (!IsWindow(fileNavigation->g_hBackButton) || !IsWindow(fileNavigation->g_hSearchBar)) {
+            throw (std::format(L"exception caught while creating window:\n{}", get_last_error()));
+            return 0;
+        }
+
+        return 0;
+
     case WM_SETFOCUS:
-        SetWindowText(g_hSearchBox, L"");
+        SetWindowText(hWnd, L"");
         break;
     case WM_KILLFOCUS:
-        if (GetWindowTextLength(g_hSearchBox) == 0) {
-            SetWindowText(g_hSearchBox, L"Search...");
+        if (GetWindowTextLength(hWnd) == 0) {
+            SetWindowText(hWnd, L"Search...");
 
         }
         break;
@@ -76,16 +100,93 @@ LRESULT CALLBACK SearchBoxProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lP
     case WM_KEYDOWN:
 
         if (wParam == (WPARAM)VK_RETURN) {
-            str = UI_GetWindowText(g_hSearchBox);
-            if (!str.empty())
-                std::wcout << "text: " << str << '\n';
+            str = UI_GetWindowText(hWnd);
         }
         break;
+    case WM_PAINT:
+        return 0;
+    case WM_DRAWITEM:
+    {
+        LPDRAWITEMSTRUCT lpDrawItemStruct = (LPDRAWITEMSTRUCT)lParam;
 
-    case WM_DESTROY:
-        DeleteObject(SegoeUI);
+        if (lpDrawItemStruct->CtlType == ODT_BUTTON)
+        {
+            if (wParam == IDM_BACKBUTTON)
+                return fileNavigation->OnRenderUndoButton(lpDrawItemStruct);
+            else if (wParam == IDM_FORWARDBUTTON)
+                return fileNavigation->OnRenderRedoButton(lpDrawItemStruct);
+        }
         break;
     }
+    case WM_DESTROY:
+        DeleteObject(fileNavigation->font);
+        break;
+
+    default:
+        break;
+    }
+
     return CallWindowProc((WNDPROC)GetWindowLongPtr(hWnd, GWLP_USERDATA), hWnd, message, wParam, lParam);
 
+}
+
+LRESULT cFileNavigation::OnRenderUndoButton(LPDRAWITEMSTRUCT lpDrawItemStruct)
+{
+    RECT r;
+    GetClientRect(parent, &r);
+
+    r.top = EXPLORER_TOP_OFFSET;
+    r.bottom = r.top + 30;
+
+    r.left = 6;
+    r.right = r.left + 30;
+
+    HDC hdcButton = lpDrawItemStruct->hDC;
+    RECT rect = lpDrawItemStruct->rcItem;
+    UINT state = lpDrawItemStruct->itemState;
+
+    SetBkMode(hdcButton, TRANSPARENT);
+
+    HBRUSH hBrush = CreateSolidBrush(RGB(25, 25, 25));
+
+    HICON icon = LoadIconW(NULL, IDI_HAND);
+
+    FillRect(hdcButton, &r, hBrush);
+
+    DrawIcon(hdcButton, rect.left, rect.top, icon);
+
+    DestroyIcon(icon);
+    DeleteObject(hBrush);
+
+    return TRUE;
+}
+LRESULT cFileNavigation::OnRenderRedoButton(LPDRAWITEMSTRUCT lpDrawItemStruct)
+{
+    RECT r;
+    GetClientRect(parent, &r);
+
+    r.top = EXPLORER_TOP_OFFSET;
+    r.bottom = r.top + 30;
+
+    r.left = 6;
+    r.right = r.left + 30;
+
+    HDC hdcButton = lpDrawItemStruct->hDC;
+    RECT rect = lpDrawItemStruct->rcItem;
+    UINT state = lpDrawItemStruct->itemState;
+
+    SetBkMode(hdcButton, TRANSPARENT);
+
+    HBRUSH hBrush = CreateSolidBrush(RGB(25, 25, 25));
+
+    HICON icon = LoadIconW(NULL, IDI_HAND);
+
+    FillRect(hdcButton, &r, hBrush);
+
+    DrawIcon(hdcButton, rect.left, rect.top, icon);
+
+    DestroyIcon(icon);
+    DeleteObject(hBrush);
+
+    return TRUE;
 }

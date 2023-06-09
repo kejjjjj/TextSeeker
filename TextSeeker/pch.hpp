@@ -17,6 +17,7 @@
 #include <filesystem>
 #include <list>
 #include <ShlObj_core.h>
+#include <format>
 
 namespace _fs = std::filesystem;
 

@@ -167,7 +167,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     {
     case WM_CREATE:
         g_hMainWnd = hWnd;
-        CreateSearchBox(hWnd);
+        UI_CreateSearchBox(hWnd);
         UI_CreateFileExplorer(hWnd);
         break;
     case WM_COMMAND:
