@@ -126,61 +126,21 @@ LRESULT CALLBACK cFileExplorer::ProcHandler(HWND hWnd, UINT message, WPARAM wPar
 		//InvalidateRect(hWnd, NULL, TRUE);
 
 		return 0;
+	case WM_MOUSEWHEEL:
+		fileExplorer->OnWheelScroll(wParam);
+		return 0;
 	break;
 	case WM_COMMAND:
 		break;
 
 	case WM_DRAWITEM:
 	{
-		
 		LPDRAWITEMSTRUCT lpDrawItemStruct = (LPDRAWITEMSTRUCT)lParam;
 
 		if (lpDrawItemStruct->CtlType == ODT_BUTTON)
 		{
-			auto b = fileExplorer->FindButtonByHWND(lpDrawItemStruct->hwndItem);
-
-			if (!b) {
-				MessageBox(NULL, L"failed", L"yea", MB_USERICON);
-				break;
-			}
-			HDC hdcButton = lpDrawItemStruct->hDC;
-			RECT rect = lpDrawItemStruct->rcItem;
-			UINT state = lpDrawItemStruct->itemState;
-			b->rect = rect;
-			SetBkMode(hdcButton, TRANSPARENT);
-
-			SetTextColor(hdcButton, b->file.is_directory ? RGB(255, 255, 255) : RGB(128, 128, 128));
-
-			HBRUSH hBrush = CreateSolidBrush(RGB(25, 25, 25)); // Example: Gray when pressed, black otherwise
-
-
-			// Fill the button rectangle with the transparent brush
-			FillRect(hdcButton, &rect, hBrush);
-
-			// Draw the icon on the left side of the button
-			SHFILEINFO stFileInfo;
-			SHGetFileInfo(b->file.path.c_str(),
-				FILE_ATTRIBUTE_NORMAL,
-				&stFileInfo,
-				sizeof(stFileInfo),
-				SHGFI_ICON | SHGFI_SMALLICON);
-
-			DrawIcon(hdcButton, rect.left, rect.top, stFileInfo.hIcon);
-
-			DestroyIcon(stFileInfo.hIcon);
-
-			// Calculate the text rectangle (excluding the icon)
-			RECT textRect = rect;
-			textRect.left += GetSystemMetrics(SM_CXICON) * 1.25; // Adjust for the width of the icon
-
-			// Draw the button text
-			DrawText(hdcButton, b->file.name.c_str(), -1, &textRect, DT_SINGLELINE | DT_VCENTER);
-
-			// Cleanup: Delete the brush
-			DeleteObject(hBrush);
-
-			// Return TRUE to indicate that the drawing was handled
-			return TRUE;
+			if(wParam >= IDM_DIRECTORY_ITEMS && wParam < IDM_DIRECTORY_ITEMS + fileExplorer->buttons.size())
+				return fileExplorer->OnRenderDirectoryButton(lpDrawItemStruct);
 		}
 		break;
 	}
@@ -190,7 +150,50 @@ LRESULT CALLBACK cFileExplorer::ProcHandler(HWND hWnd, UINT message, WPARAM wPar
 
 	return CallWindowProc((WNDPROC)GetWindowLongPtr(hWnd, GWLP_USERDATA), hWnd, message, wParam, lParam);
 }
+LRESULT cFileExplorer::OnRenderDirectoryButton(LPDRAWITEMSTRUCT lpDrawItemStruct)
+{
+	auto b = fileExplorer->FindButtonByHWND(lpDrawItemStruct->hwndItem);
 
+	if (!b) {
+		MessageBox(NULL, L"failed", L"yea", MB_USERICON);
+		return FALSE;
+	}
+	HDC hdcButton = lpDrawItemStruct->hDC;
+	RECT rect = lpDrawItemStruct->rcItem;
+	UINT state = lpDrawItemStruct->itemState;
+	b->rect = rect;
+	SetBkMode(hdcButton, TRANSPARENT);
+
+	SetTextColor(hdcButton, b->file.is_directory ? RGB(255, 255, 255) : RGB(128, 128, 128));
+
+	HBRUSH hBrush = CreateSolidBrush(RGB(25, 25, 25)); // Example: Gray when pressed, black otherwise
+
+
+	// Fill the button rectangle with the transparent brush
+	FillRect(hdcButton, &rect, hBrush);
+
+	// Draw the icon on the left side of the button
+	SHFILEINFO stFileInfo;
+	SHGetFileInfo(b->file.path.c_str(),
+		FILE_ATTRIBUTE_NORMAL,
+		&stFileInfo,
+		sizeof(stFileInfo),
+		SHGFI_ICON | SHGFI_SMALLICON);
+
+	rect.left += 6;
+	DrawIcon(hdcButton, rect.left, rect.top, stFileInfo.hIcon);
+
+	DestroyIcon(stFileInfo.hIcon);
+
+	RECT textRect = rect;
+	textRect.left += GetSystemMetrics(SM_CXICON) * 1.25;
+
+	DrawText(hdcButton, b->file.name.c_str(), -1, &textRect, DT_SINGLELINE | DT_VCENTER);
+
+	DeleteObject(hBrush);
+
+	return TRUE;
+}
 void UI_CreateFileExplorer(HWND parent)
 {
 	RECT r;
@@ -329,6 +332,14 @@ void cFileExplorer::OnVerticalScroll(WPARAM wParam)
 	}
 
 }
+void cFileExplorer::OnWheelScroll(WPARAM wParam)
+{
+	int nScrollLines = 3; 
+	int zDelta = GET_WHEEL_DELTA_WPARAM(wParam);
+	int nVScrollAmount = (zDelta / WHEEL_DELTA) * nScrollLines;
+
+	SendMessage(hWnd, WM_VSCROLL, SB_LINEUP, nVScrollAmount);
+}
 sExplorerButton* cFileExplorer::FindButtonByHWND(HWND hWnd)
 {
 	for (auto& i : buttons) {
@@ -375,8 +386,8 @@ void cFileExplorer::OnPaint(WPARAM wParam, LPARAM lParam)
 	GetScrollInfo(hWnd, SB_VERT, &si);
 	scroll.scrollY = si.nPos;
 
-	GetScrollInfo(hWnd, SB_HORZ, &si);
-	scroll.scrollX = si.nPos;
+	//GetScrollInfo(hWnd, SB_HORZ, &si);
+	//scroll.scrollX = si.nPos;
 
 
 	OnCreateScroll(buttons.size());
@@ -404,7 +415,7 @@ void cFileExplorer::OnPopulateButtons(const std::wstring& loc)
 	HDC hdc;
 	ScrollMetrics& scroll = fileExplorer->sScroll;
 	std::vector<sFile> files;
-	UINT hmenu = 2500;
+	UINT hmenu = IDM_DIRECTORY_ITEMS;
 	HWND hwnd;
 	HFONT segoeUI;
 
@@ -416,9 +427,11 @@ void cFileExplorer::OnPopulateButtons(const std::wstring& loc)
 	scroll.horzScroll = tm.tmAveCharWidth / 1.5;
 	scroll.upperWidth = (tm.tmPitchAndFamily & 1 ? 3 : 2) * scroll.horzScroll / 2;
 	scroll.vertScroll = /*(tm.tmHeight + tm.tmExternalLeading) + */45;
-	
+	scroll.scrollY = 0;
 
+	UINT a = IDM_DIRECTORY_ITEMS;
 	for (auto& i : buttons) {
+		RemoveWindowSubclass(i.hWnd, OwnerDrawButtonProc, a++);
 		i.Destroy(); //kill window & delete font
 	}
 
@@ -428,7 +441,7 @@ void cFileExplorer::OnPopulateButtons(const std::wstring& loc)
 
 	r.top = 6;
 	if (fs::files_in_directory(copy, files)) {
-		auto longest = std::max_element(files.begin(), files.end(), [](const sFile& a, const sFile& b) {return a.name.size() < b.name.size(); });
+		//auto longest = std::max_element(files.begin(), files.end(), [](const sFile& a, const sFile& b) {return a.name.size() < b.name.size(); });
 		scroll.nPage = (tm.tmHeight);
 		for (auto it = files.begin(); it != files.end(); ++it) {
 			std::wcout << it->name << '\n';
@@ -446,7 +459,7 @@ void cFileExplorer::OnPopulateButtons(const std::wstring& loc)
 
 			hwnd = CreateWindowExW(0, L"BUTTON", it->name.c_str(), WS_CHILD | WS_VISIBLE | BS_OWNERDRAW,
 				0, r.top, rect.right, 30, hWnd, (HMENU)hmenu, GetModuleHandle(NULL), NULL);
-			SetWindowSubclass(hwnd, &OwnerDrawButtonProc, 3000, 0);
+			SetWindowSubclass(hwnd, &OwnerDrawButtonProc, hmenu, 0);
 			buttons.push_back(
 				{
 					hwnd,
@@ -457,29 +470,15 @@ void cFileExplorer::OnPopulateButtons(const std::wstring& loc)
 				});
 
 			r.top += 45;
-			SHGetFileInfo(it->path.c_str(), FILE_ATTRIBUTE_NORMAL, &stFileInfo, sizeof(stFileInfo), SHGFI_ICON | SHGFI_SMALLICON);
-
-
 
 			SelectObject(hdc, segoeUI);
 
-			
-			//SetWindowTheme(hwnd, L"Explorer", NULL);
 
-			//SendMessage(hwnd, BM_SETSTATE, BST_UNCHECKED, FALSE);
-
-			//SendMessage(hwnd, BM_SETIMAGE, IMAGE_ICON, (LPARAM)stFileInfo.hIcon);
 			SendMessage(hwnd, WM_SETFONT, (WPARAM)segoeUI, TRUE);
-
-			//// Clean up
-			//DeleteObject(segoeUI);
-
-			//ShowWindow(buttons.back().hWnd, TRUE);
-			DestroyIcon(stFileInfo.hIcon);
 			++hmenu;
 		}
-		std::wcout << L"longest elem: " << longest->name << '\n';
-		scroll.xMax = (int)longest->name.length() * scroll.horzScroll;
+		//std::wcout << L"longest elem: " << longest->name << '\n';
+		//scroll.xMax = (int)longest->name.length() * scroll.horzScroll;
 
 		
 
@@ -489,7 +488,7 @@ void cFileExplorer::OnPopulateButtons(const std::wstring& loc)
 }
 
 
-LRESULT CALLBACK OwnerDrawButtonProc(HWND hWnd, UINT uMsg, WPARAM wParam,
+LRESULT CALLBACK cFileExplorer::OwnerDrawButtonProc(HWND hWnd, UINT uMsg, WPARAM wParam,
 	LPARAM lParam, UINT_PTR uIdSubclass, DWORD_PTR dwRefData)
 
 {
