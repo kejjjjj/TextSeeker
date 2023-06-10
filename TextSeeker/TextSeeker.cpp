@@ -28,6 +28,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     UNREFERENCED_PARAMETER(lpCmdLine);
 
 
+
     INITCOMMONCONTROLSEX icex;
     icex.dwSize = sizeof(INITCOMMONCONTROLSEX);
     icex.dwICC = ICC_STANDARD_CLASSES | ICC_PROGRESS_CLASS;
@@ -50,13 +51,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         MessageBox(NULL, L"epic InitInstance failure!", L"Error!", MB_ICONERROR);
         return FALSE;
     }
-
     FILE* _con = 0;
 
     AllocConsole();
-    freopen_s(&_con, "CONOUT$", "w", stdout);
-
-    std::cout << "hello!\n";
+    _wfreopen_s(&_con, L"CONOUT$", L"w", stdout);
+    wprintf(L"hello!\n");
 
     HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_TEXTSEEKER));
 

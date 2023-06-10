@@ -12,6 +12,8 @@ std::wstring UI_GetWindowText(HWND hWnd)
 
     GetWindowText(hWnd, textBuffer, textLength + 1);
 
+    
+
     std::wstring buf = textBuffer;
     delete[] textBuffer;
 
@@ -26,13 +28,20 @@ bool isHovered(const RECT& r, const LPPOINT p)
 
 void UI_CreateSearchBox(HWND parent)
 {
+    RECT re;
+    GetClientRect(parent, &re);
+
+    auto width = re.right - re.left;
+
     RECT r;
-    GetClientRect(parent, &r);
 
-    auto width = r.right - r.left;
+    r.left = 0;
+    r.top = 23;
+    r.right = width;
+    r.bottom = r.top + 30;
 
-    HWND hwnd = CreateWindowExW(0, L"STATIC", NULL, WS_CHILD | WS_VISIBLE | WS_BORDER,
-        0, 23, 300, 30, parent, (HMENU)IDM_TOPBAR, GetModuleHandle(NULL), NULL);
+    HWND hwnd = CreateWindowExW(0, L"STATIC", NULL, WS_CHILD | WS_VISIBLE,
+        0, 23, width, 30, parent, (HMENU)IDM_TOPBAR, GetModuleHandle(NULL), NULL);
 
 
     if (!IsWindow(hwnd)) {
@@ -47,7 +56,7 @@ void UI_CreateSearchBox(HWND parent)
 
     fileNavigation = std::unique_ptr<cFileNavigation>(new cFileNavigation(parent, hwnd, SegoeUI));
 
-
+    fileNavigation->rect = r;
 
 
     SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)GetWindowLongPtr(hwnd, GWLP_WNDPROC));
@@ -65,44 +74,29 @@ LRESULT CALLBACK cFileNavigation::ProcHandler(HWND hWnd, UINT message, WPARAM wP
     {
     case WM_CREATE:
         fileNavigation->g_hBackButton = CreateWindowExW(0, L"BUTTON", L"BACK", WS_CHILD | WS_VISIBLE | BS_OWNERDRAW,
-            6, 0, 30, 30, fileNavigation->hWnd, (HMENU)IDM_BACKBUTTON, GetModuleHandle(NULL), NULL);
+            BACKBUTTON_X, 0, 30, 30, fileNavigation->hWnd, (HMENU)IDM_BACKBUTTON, GetModuleHandle(NULL), NULL);
 
         fileNavigation->g_hForwardButton = CreateWindowExW(0, L"BUTTON", L"FORWARD", WS_CHILD | WS_VISIBLE | BS_OWNERDRAW,
-            40, 0, 30, 30, fileNavigation->hWnd, (HMENU)IDM_FORWARDBUTTON, GetModuleHandle(NULL), NULL);
+            FORWARDBUTTON_X, 0, 30, 30, fileNavigation->hWnd, (HMENU)IDM_FORWARDBUTTON, GetModuleHandle(NULL), NULL);
 
-        fileNavigation->g_hSearchBar = CreateWindowExW(0, L"EDIT", L"aaa", WS_CHILD | WS_VISIBLE | WS_BORDER,
-            40*2+15, 0, 300, 30, fileNavigation->hWnd, (HMENU)IDM_SEARCHBOX, GetModuleHandle(NULL), NULL);
+        fileNavigation->g_hSearchBar = CreateWindowExW(0, L"EDIT", NULL, WS_CHILD | WS_VISIBLE | WS_BORDER,
+            SEARCHBOX_X, 0, fileNavigation->rect.right/2, 30, fileNavigation->hWnd, (HMENU)IDM_SEARCHBOX, GetModuleHandle(NULL), NULL);
 
         hwnd = fileNavigation->g_hSearchBar;
 
         SendMessage(hwnd, WM_SETFONT, (WPARAM)fileNavigation->font, TRUE);
-       // SendMessage(hwnd, EM_SETRECT, TRUE, (LPARAM)&rect);
         SendMessage(hwnd, EM_LIMITTEXT, MAX_PATH, TRUE);
         SetWindowText(hwnd, L"Search...");
+
+        SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)GetWindowLongPtr(hwnd, GWLP_WNDPROC));
+        SetWindowLongPtr(hwnd, GWLP_WNDPROC, (LONG_PTR)fileNavigation->SearchBoxProc);
 
         if (!IsWindow(fileNavigation->g_hBackButton) || !IsWindow(fileNavigation->g_hSearchBar)) {
             throw (std::format(L"exception caught while creating window:\n{}", get_last_error()));
             return 0;
         }
-
         return 0;
 
-    case WM_SETFOCUS:
-        SetWindowText(hWnd, L"");
-        break;
-    case WM_KILLFOCUS:
-        if (GetWindowTextLength(hWnd) == 0) {
-            SetWindowText(hWnd, L"Search...");
-
-        }
-        break;
-
-    case WM_KEYDOWN:
-
-        if (wParam == (WPARAM)VK_RETURN) {
-            str = UI_GetWindowText(hWnd);
-        }
-        break;
     case WM_PAINT:
         return 0;
     case WM_DRAWITEM:
@@ -118,6 +112,19 @@ LRESULT CALLBACK cFileNavigation::ProcHandler(HWND hWnd, UINT message, WPARAM wP
         }
         break;
     }
+    case WM_CTLCOLORSTATIC:
+    case WM_CTLCOLOREDIT:
+    {
+        HDC hdc = (HDC)wParam;
+        SetBkColor(hdc, RGB(25, 25, 25)); // Red background color
+        SetTextColor(hdc, RGB(255, 255, 255)); // White text color
+
+        // Return the handle to a brush for the background color
+        HBRUSH hBrush = CreateSolidBrush(RGB(25, 25, 25));
+        return (LRESULT)hBrush;
+        
+        
+    }
     case WM_DESTROY:
         DeleteObject(fileNavigation->font);
         break;
@@ -129,7 +136,47 @@ LRESULT CALLBACK cFileNavigation::ProcHandler(HWND hWnd, UINT message, WPARAM wP
     return CallWindowProc((WNDPROC)GetWindowLongPtr(hWnd, GWLP_USERDATA), hWnd, message, wParam, lParam);
 
 }
+LRESULT CALLBACK cFileNavigation::SearchBoxProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+    HDC hdc;
+    std::wstring str;
+    switch (message)
+    {
+    case WM_SETFOCUS:
+        SetWindowText(hWnd, L"");
+        break;
+    case WM_KILLFOCUS:
+        if (UI_GetWindowText(hWnd).empty()) {
+            SetWindowText(hWnd, L"Search...");
 
+        }
+        break;
+    case WM_KEYDOWN:
+        if (wParam == (WPARAM)VK_RETURN) {
+            str = UI_GetWindowText(hWnd);
+            wprintf_s(L"text: %s\n", str.c_str());
+           
+            if (str.empty()) {
+                wprintf(L"empty...\n");
+                break;
+
+            }
+            
+            if (!fs::is_directory(str)) {
+                wprintf(L"no...\n");
+                break;
+            }
+            wprintf(L"yes...\n");
+
+        }
+        break;
+    case WM_DESTROY:
+       // DeleteObject(SegoeUI);
+        break;
+    }
+    return CallWindowProc((WNDPROC)GetWindowLongPtr(hWnd, GWLP_USERDATA), hWnd, message, wParam, lParam);
+
+}
 LRESULT cFileNavigation::OnRenderUndoButton(LPDRAWITEMSTRUCT lpDrawItemStruct)
 {
     RECT r;

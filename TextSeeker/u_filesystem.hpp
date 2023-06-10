@@ -15,6 +15,8 @@ struct sFile
 namespace fs
 {
 	bool file_exists(const std::wstring_view& file);
+	bool is_directory(const std::wstring_view& file);
+
 	std::wstring full_path_to_name(const std::wstring_view& path);
 	std::wstring file_extension(const std::wstring_view& file);
 	bool files_in_directory(const std::wstring& directory, std::vector<sFile>& out);

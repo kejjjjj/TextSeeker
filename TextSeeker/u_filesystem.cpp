@@ -4,6 +4,10 @@ bool fs::file_exists(const std::wstring_view& file)
 {
 	return _fs::exists(file);
 }
+bool fs::is_directory(const std::wstring_view& file)
+{
+	return _fs::is_directory(file);
+}
 std::wstring fs::full_path_to_name(const std::wstring_view& path)
 {
 	const auto p = path.find_last_of('\\');

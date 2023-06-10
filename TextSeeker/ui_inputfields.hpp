@@ -10,6 +10,10 @@
 std::wstring UI_GetWindowText(HWND hWnd);
 bool isHovered(const RECT& r, const LPPOINT p);
 
+#define BACKBUTTON_X 6
+#define FORWARDBUTTON_X 40
+#define SEARCHBOX_X (FORWARDBUTTON_X + 30 + 15)
+
 class cFileNavigation : public cSeekerWindow
 {
 public:
@@ -24,6 +28,7 @@ public:
 	LRESULT OnRenderRedoButton(LPDRAWITEMSTRUCT lpDrawItemStruct);
 
 	static LRESULT CALLBACK ProcHandler(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
+	static LRESULT CALLBACK SearchBoxProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 
 	HWND hWnd;
 	HWND g_hBackButton;
