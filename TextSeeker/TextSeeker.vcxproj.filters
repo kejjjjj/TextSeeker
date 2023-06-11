@@ -16,6 +16,9 @@
     <Filter Include="Source Files\filesystem">
       <UniqueIdentifier>{b1955fea-c3af-4694-a890-014c3b190588}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\ui">
+      <UniqueIdentifier>{cbd2eaf0-abda-4b4c-a493-5c83a18e5bdc}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="framework.h">
@@ -30,14 +33,8 @@
     <ClInclude Include="TextSeeker.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ui_inputfields.hpp">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="pch.hpp">
       <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ui_fileexplorer.hpp">
-      <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="u_filesystem.hpp">
       <Filter>Source Files\filesystem</Filter>
@@ -45,19 +42,31 @@
     <ClInclude Include="TextSeeker.hpp">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="ui_search.hpp">
+      <Filter>Source Files\ui</Filter>
+    </ClInclude>
+    <ClInclude Include="ui_fileexplorer.hpp">
+      <Filter>Source Files\ui</Filter>
+    </ClInclude>
+    <ClInclude Include="ui_inputfields.hpp">
+      <Filter>Source Files\ui</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="TextSeeker.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ui_inputfields.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ui_fileexplorer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="u_filesystem.cpp">
       <Filter>Source Files\filesystem</Filter>
+    </ClCompile>
+    <ClCompile Include="ui_inputfields.cpp">
+      <Filter>Source Files\ui</Filter>
+    </ClCompile>
+    <ClCompile Include="ui_search.cpp">
+      <Filter>Source Files\ui</Filter>
+    </ClCompile>
+    <ClCompile Include="ui_fileexplorer.cpp">
+      <Filter>Source Files\ui</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

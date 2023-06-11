@@ -137,6 +137,8 @@ LRESULT CALLBACK cFileExplorer::ProcHandler(HWND hWnd, UINT message, WPARAM wPar
 
 	case WM_DRAWITEM:
 	{
+
+		SendMessage(hWnd, WM_PAINT, 0, 0);
 		LPDRAWITEMSTRUCT lpDrawItemStruct = (LPDRAWITEMSTRUCT)lParam;
 		if (lpDrawItemStruct->CtlType == ODT_BUTTON)
 		{
@@ -429,7 +431,10 @@ void cFileExplorer::OnPopulateButtons(const std::wstring& loc)
 	hdc = GetDC(hWnd);
 	GetTextMetrics(hdc, &tm);
 
-	auto copy = loc;
+	if (undoHistory.size() >= 100)
+		undoHistory.pop_front();
+
+	undoHistory.push_back(loc);
 
 	scroll.horzScroll = tm.tmAveCharWidth / 1.5;
 	scroll.upperWidth = (tm.tmPitchAndFamily & 1 ? 3 : 2) * scroll.horzScroll / 2;
@@ -447,7 +452,7 @@ void cFileExplorer::OnPopulateButtons(const std::wstring& loc)
 	GetClientRect(hWnd, &r);
 
 	r.top = 6;
-	if (fs::files_in_directory(copy, files)) {
+	if (fs::files_in_directory(undoHistory.back(), files)) {
 		//auto longest = std::max_element(files.begin(), files.end(), [](const sFile& a, const sFile& b) {return a.name.size() < b.name.size(); });
 		scroll.nPage = (tm.tmHeight);
 		for (auto it = files.begin(); it != files.end(); ++it) {
@@ -465,7 +470,8 @@ void cFileExplorer::OnPopulateButtons(const std::wstring& loc)
 				DEFAULT_PITCH | FF_DONTCARE, L"Segoe UI");
 
 			hwnd = CreateWindowExW(0, L"BUTTON", it->name.c_str(), WS_CHILD | WS_VISIBLE | BS_OWNERDRAW,
-				0, r.top, rect.right, 30, hWnd, (HMENU)hmenu, GetModuleHandle(NULL), NULL);
+				0, r.top, rect.right-10, 30, hWnd, (HMENU)hmenu, GetModuleHandle(NULL), NULL);
+
 			SetWindowSubclass(hwnd, &OwnerDrawButtonProc, hmenu, 0);
 			buttons.push_back(
 				{
@@ -490,8 +496,13 @@ void cFileExplorer::OnPopulateButtons(const std::wstring& loc)
 		
 
 	}
-
+	//SendMessage(fileNavigation->g_hSearchBar, WM_SETTEXT, 0, (LPARAM)undoHistory.back().c_str());
+	SetWindowText(fileNavigation->g_hSearchBar, undoHistory.back().c_str());
+	UpdateWindow(fileNavigation->g_hSearchBar);
 	ReleaseDC(hWnd, hdc);
+
+	InvalidateRect(hWnd, NULL, NULL);
+	UpdateWindow(hWnd);
 }
 
 
@@ -520,13 +531,12 @@ LRESULT CALLBACK cFileExplorer::OwnerDrawButtonProc(HWND hWnd, UINT uMsg, WPARAM
 		
 
 		if (!b->file.is_directory) {
-			//MessageBox(NULL, L"Item must be a folder", L"Error!", MB_ICONERROR);
+			std::thread([]() { MessageBox(NULL, L"Item must be a folder", L"Warning", MB_ICONWARNING); }).join();
 			break;
 		}
 
 		fileExplorer->OnPopulateButtons(b->file.path);
-		InvalidateRect(fileExplorer->hWnd, NULL, NULL);
-		UpdateWindow(fileExplorer->hWnd);
+
 		std::wcout << b->file.path << '\n';
 		break;
 	case WM_NCDESTROY:

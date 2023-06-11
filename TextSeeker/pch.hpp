@@ -18,8 +18,8 @@
 #include <list>
 #include <ShlObj_core.h>
 #include <format>
-#include <fcntl.h>
-#include <io.h>
+#include <thread>
+
 namespace _fs = std::filesystem;
 
 #pragma comment(lib, "UxTheme.lib")

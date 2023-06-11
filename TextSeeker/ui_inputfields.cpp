@@ -79,7 +79,7 @@ LRESULT CALLBACK cFileNavigation::ProcHandler(HWND hWnd, UINT message, WPARAM wP
         fileNavigation->g_hForwardButton = CreateWindowExW(0, L"BUTTON", L"FORWARD", WS_CHILD | WS_VISIBLE | BS_OWNERDRAW,
             FORWARDBUTTON_X, 0, 30, 30, fileNavigation->hWnd, (HMENU)IDM_FORWARDBUTTON, GetModuleHandle(NULL), NULL);
 
-        fileNavigation->g_hSearchBar = CreateWindowExW(0, L"EDIT", NULL, WS_CHILD | WS_VISIBLE | WS_BORDER,
+        fileNavigation->g_hSearchBar = CreateWindowExW(0, L"EDIT", NULL, WS_CHILD | WS_VISIBLE | WS_BORDER | ES_MULTILINE,
             SEARCHBOX_X, 0, fileNavigation->rect.right/2, 30, fileNavigation->hWnd, (HMENU)IDM_SEARCHBOX, GetModuleHandle(NULL), NULL);
 
         hwnd = fileNavigation->g_hSearchBar;
@@ -99,6 +99,15 @@ LRESULT CALLBACK cFileNavigation::ProcHandler(HWND hWnd, UINT message, WPARAM wP
 
     case WM_PAINT:
         return 0;
+    //case WM_COMMAND:
+
+    //    if (LOWORD(wParam) == IDM_SEARCHBOX && HIWORD(wParam) == EN_SETFOCUS) {
+    //        SendMessage(fileNavigation->g_hSearchBar, EN_SETFOCUS, 0, -1);
+    //        
+
+    //    }
+
+        break;
     case WM_DRAWITEM:
     {
         LPDRAWITEMSTRUCT lpDrawItemStruct = (LPDRAWITEMSTRUCT)lParam;
@@ -143,7 +152,13 @@ LRESULT CALLBACK cFileNavigation::SearchBoxProc(HWND hWnd, UINT message, WPARAM 
     switch (message)
     {
     case WM_SETFOCUS:
-        SetWindowText(hWnd, L"");
+        str = UI_GetWindowText(hWnd);
+        if (str.empty())
+            break;
+           
+        SendMessage(hWnd, EM_SETSEL, (WPARAM)0, (LPARAM)-1);
+
+
         break;
     case WM_KILLFOCUS:
         if (UI_GetWindowText(hWnd).empty()) {
@@ -153,21 +168,27 @@ LRESULT CALLBACK cFileNavigation::SearchBoxProc(HWND hWnd, UINT message, WPARAM 
         break;
     case WM_KEYDOWN:
         if (wParam == (WPARAM)VK_RETURN) {
+
             str = UI_GetWindowText(hWnd);
-            wprintf_s(L"text: %s\n", str.c_str());
+            //wprintf_s(L"text: %s\n", str.c_str());
            
             if (str.empty()) {
-                wprintf(L"empty...\n");
                 break;
 
             }
             
             if (!fs::is_directory(str)) {
-                wprintf(L"no...\n");
+                std::thread a([]()
+                    {
+                        MessageBoxW(NULL, L"Invalid directory!", L"Warning", MB_ICONWARNING);
+                    });
+                a.join();
                 break;
             }
-            wprintf(L"yes...\n");
 
+            fileExplorer->OnPopulateButtons(str);
+            InvalidateRect(hWnd, NULL, TRUE);
+            UpdateWindow(hWnd);
         }
         break;
     case WM_DESTROY:

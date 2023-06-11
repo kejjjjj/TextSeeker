@@ -71,8 +71,8 @@ public:
 	std::list<sExplorerButton> buttons;
 	std::wstring current_directory;
 
-	std::list<std::string> undoHistory;
-	std::list<std::string> redoHistory;
+	std::list<std::wstring> undoHistory;
+	std::list<std::wstring> redoHistory;
 
 private:
 	
