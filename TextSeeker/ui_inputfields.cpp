@@ -125,7 +125,7 @@ LRESULT CALLBACK cFileNavigation::ProcHandler(HWND hWnd, UINT message, WPARAM wP
     case WM_CTLCOLOREDIT:
     {
         HDC hdc = (HDC)wParam;
-        SetBkColor(hdc, RGB(25, 25, 25)); // Red background color
+        SetBkColor(hdc, RGB(25, 25, 25));
         SetTextColor(hdc, RGB(255, 255, 255)); // White text color
 
         // Return the handle to a brush for the background color
@@ -153,6 +153,10 @@ LRESULT CALLBACK cFileNavigation::SearchBoxProc(HWND hWnd, UINT message, WPARAM 
     {
     case WM_SETFOCUS:
         str = UI_GetWindowText(hWnd);
+
+        EnableWindow(hWnd, TRUE);
+        SetCaretPos(str.size()-1, 0);
+
         if (str.empty())
             break;
            

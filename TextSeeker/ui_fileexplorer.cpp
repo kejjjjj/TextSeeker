@@ -105,6 +105,7 @@ LRESULT CALLBACK cFileExplorer::ProcHandler(HWND hWnd, UINT message, WPARAM wPar
 
 		InvalidateRect(hWnd, NULL, TRUE);
 		UpdateWindow(hWnd);
+		//RedrawWindow(hWnd, NULL, NULL, RDW_FRAME | RDW_INVALIDATE | RDW_UPDATENOW);
 
 		break;
 
@@ -138,7 +139,7 @@ LRESULT CALLBACK cFileExplorer::ProcHandler(HWND hWnd, UINT message, WPARAM wPar
 	case WM_DRAWITEM:
 	{
 
-		SendMessage(hWnd, WM_PAINT, 0, 0);
+		//SendMessage(hWnd, WM_PAINT, 0, 0);
 		LPDRAWITEMSTRUCT lpDrawItemStruct = (LPDRAWITEMSTRUCT)lParam;
 		if (lpDrawItemStruct->CtlType == ODT_BUTTON)
 		{
@@ -161,10 +162,16 @@ LRESULT cFileExplorer::OnRenderDirectoryButton(LPDRAWITEMSTRUCT lpDrawItemStruct
 		MessageBox(NULL, L"failed", L"yea", MB_USERICON);
 		return FALSE;
 	}
+
+	
+
 	HDC hdcButton = lpDrawItemStruct->hDC;
-	RECT rect = lpDrawItemStruct->rcItem;
+	RECT& rrect = lpDrawItemStruct->rcItem;
 	UINT state = lpDrawItemStruct->itemState;
-	b->rect = rect;
+	b->rect = rrect;
+	
+	//SetWindowPos(b->hWnd, NULL, rrect.left, rrect.top, rrect.right, 30, SWP_NOZORDER);
+
 	SetBkMode(hdcButton, TRANSPARENT);
 
 	SetTextColor(hdcButton, b->file.is_directory ? RGB(255, 255, 255) : RGB(128, 128, 128));
@@ -172,8 +179,8 @@ LRESULT cFileExplorer::OnRenderDirectoryButton(LPDRAWITEMSTRUCT lpDrawItemStruct
 	HBRUSH hBrush = CreateSolidBrush(RGB(25, 25, 25)); // Example: Gray when pressed, black otherwise
 
 
-	// Fill the button rectangle with the transparent brush
-	FillRect(hdcButton, &rect, hBrush);
+	// Fill the button rrectangle with the transparent brush
+	FillRect(hdcButton, &rrect, hBrush);
 
 	// Draw the icon on the left side of the button
 	SHFILEINFO stFileInfo;
@@ -183,12 +190,11 @@ LRESULT cFileExplorer::OnRenderDirectoryButton(LPDRAWITEMSTRUCT lpDrawItemStruct
 		sizeof(stFileInfo),
 		SHGFI_ICON | SHGFI_SMALLICON);
 
-	rect.left += 6;
-	DrawIcon(hdcButton, rect.left, rect.top, stFileInfo.hIcon);
+	DrawIcon(hdcButton, rrect.left + 6, rrect.top, stFileInfo.hIcon);
 
 	DestroyIcon(stFileInfo.hIcon);
 
-	RECT textRect = rect;
+	RECT textRect = rrect;
 	textRect.left += GetSystemMetrics(SM_CXICON) * 1.25;
 
 	DrawText(hdcButton, b->file.name.c_str(), -1, &textRect, DT_SINGLELINE | DT_VCENTER);

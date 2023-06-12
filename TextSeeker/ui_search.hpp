@@ -12,10 +12,19 @@ public:
 
 	}
 
+	static LRESULT CALLBACK ProcHandler(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
+
+	LRESULT OnRenderSearchButton(LPDRAWITEMSTRUCT lpDrawItemStruct);
+
 	HWND hWnd;
+
+	
+	HFONT font; 
+	HWND h_gSearchButton;
+	HWND h_gSearchField;
 private:
 	HWND parent;
-	HFONT font;
+	
 };
 
 void UI_CreateSearchField(HWND parent);

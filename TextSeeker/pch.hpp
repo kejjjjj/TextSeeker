@@ -28,6 +28,7 @@ namespace _fs = std::filesystem;
 #include "TextSeeker.hpp"
 #include "ui_inputfields.hpp"
 #include "ui_fileexplorer.hpp"
+#include "ui_search.hpp"
 
 inline HWND g_hMainWnd;
 inline bool b_LHeld = false;
